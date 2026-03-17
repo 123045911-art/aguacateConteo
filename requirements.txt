@@ -32,7 +32,6 @@ idna==3.11
 itsdangerous==2.2.0
 Jinja2==3.1.6
 joblib==1.5.3
-jwt==1.4.0
 keras-facenet==0.3.2
 kiwisolver==1.4.9
 lz4==4.4.5
