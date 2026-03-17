@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const API_URL = "https://tu-app-en-render.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "https://tu-app-en-render.onrender.com";
 
 function App() {
   const [peso, setPeso] = useState('')
@@ -17,7 +17,7 @@ function App() {
 
   const fetchMedia = useCallback(async () => {
     try {
-      let url = `${API}/media`
+      let url = `${API_URL}/media`
       if (repMes) {
         const [anio, mes] = repMes.split('-')
         url += `?anio=${anio}&mes=${mes}`
@@ -28,7 +28,7 @@ function App() {
       setSuma(data.suma)
       setTotal(data.total)
 
-      const resMeses = await fetch(`${API}/meses`)
+      const resMeses = await fetch(`${API_URL}/meses`)
       const dataMeses = await resMeses.json()
       setMeses(dataMeses)
     } catch {
@@ -66,7 +66,7 @@ function App() {
     const valorKg = gramos / 1000
     setLoading(true)
     try {
-      const res = await fetch(`${API}/pesaje`, {
+      const res = await fetch(`${API_URL}/pesaje`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ peso: valorKg }),
@@ -89,7 +89,7 @@ function App() {
 
   const descargarPDF = async () => {
     try {
-      let urlPDF = `${API}/reporte`
+      let urlPDF = `${API_URL}/reporte`
       if (repMes) {
         const [anio, mes] = repMes.split('-')
         urlPDF += `?anio=${anio}&mes=${mes}`
@@ -132,7 +132,7 @@ function App() {
   const eliminarDatos = async () => {
     if (!window.confirm('⚠️ ¿Estás seguro de que quieres ELIMINAR todos los registros? Esta acción no se puede deshacer.')) return
     try {
-      const res = await fetch(`${API}/reset`, { method: 'DELETE' })
+      const res = await fetch(`${API_URL}/reset`, { method: 'DELETE' })
       const data = await res.json()
       mostrarMensaje(`🗑️ ${data.mensaje}`, 'ok')
       setAnimateAvg(true)
@@ -145,7 +145,7 @@ function App() {
 
   const crearEnero = async () => {
     try {
-      const res = await fetch(`${API}/seed-enero`, { method: 'POST' })
+      const res = await fetch(`${API_URL}/seed-enero`, { method: 'POST' })
       const data = await res.json()
       mostrarMensaje(`📅 ${data.mensaje}`, 'ok')
       await fetchMedia()
@@ -156,7 +156,7 @@ function App() {
 
   const crearFebrero = async () => {
     try {
-      const res = await fetch(`${API}/seed-febrero`, { method: 'POST' })
+      const res = await fetch(`${API_URL}/seed-febrero`, { method: 'POST' })
       const data = await res.json()
       mostrarMensaje(`📅 ${data.mensaje}`, 'ok')
       await fetchMedia()
