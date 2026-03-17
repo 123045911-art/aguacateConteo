@@ -1,0 +1,15 @@
+# Ignorar credenciales sensibles
+.env
+
+# Ignorar entorno virtual de Python
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Ignorar carpetas de dependencias de React
+node_modules/
+build/
+
+# Ignorar archivos generados localmente
+*.pdf
