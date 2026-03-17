@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const API = 'http://192.168.1.74:8000'
+const API_URL = "https://tu-app-en-render.onrender.com";
 
 function App() {
   const [peso, setPeso] = useState('')
@@ -11,7 +11,7 @@ function App() {
   const [mensaje, setMensaje] = useState(null)
   const [tipoMensaje, setTipoMensaje] = useState('ok')
   const [animateAvg, setAnimateAvg] = useState(false)
-  
+
   const [meses, setMeses] = useState([])
   const [repMes, setRepMes] = useState('')
 
@@ -27,7 +27,7 @@ function App() {
       setMedia(data.media)
       setSuma(data.suma)
       setTotal(data.total)
-      
+
       const resMeses = await fetch(`${API}/meses`)
       const dataMeses = await resMeses.json()
       setMeses(dataMeses)
@@ -94,7 +94,7 @@ function App() {
         const [anio, mes] = repMes.split('-')
         urlPDF += `?anio=${anio}&mes=${mes}`
       }
-      
+
       const res = await fetch(urlPDF)
       if (!res.ok) {
         const err = await res.json()
@@ -104,7 +104,7 @@ function App() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      
+
       let nombreMes = ''
       let anioMes = ''
       if (repMes) {
@@ -265,21 +265,21 @@ function App() {
         <div className="grid grid-cols-3 gap-2">
           {teclas.map((t, i) => (
             t === '' ? <div key={i} /> : (
-            <button
-              key={t}
-              onClick={() => (t === '⌫' ? borrar() : agregarDigito(t))}
-              onDoubleClick={() => t === '⌫' && limpiar()}
-              className={`
+              <button
+                key={t}
+                onClick={() => (t === '⌫' ? borrar() : agregarDigito(t))}
+                onDoubleClick={() => t === '⌫' && limpiar()}
+                className={`
                 h-16 rounded-xl text-2xl font-bold
                 transition-all duration-150 active:scale-95
                 ${t === '⌫'
-                  ? 'bg-marron/10 text-marron hover:bg-marron/20 active:bg-marron/30'
-                  : 'bg-white text-verde-oscuro border border-crema-oscuro hover:bg-crema-oscuro/50 active:bg-verde-oscuro active:text-white shadow-sm'
-                }
+                    ? 'bg-marron/10 text-marron hover:bg-marron/20 active:bg-marron/30'
+                    : 'bg-white text-verde-oscuro border border-crema-oscuro hover:bg-crema-oscuro/50 active:bg-verde-oscuro active:text-white shadow-sm'
+                  }
               `}
-            >
-              {t}
-            </button>
+              >
+                {t}
+              </button>
             )
           ))}
         </div>
@@ -315,7 +315,7 @@ function App() {
 
         <div className="bg-marron/5 border border-marron/10 rounded-2xl p-4 mt-4 text-center">
           <p className="text-sm font-bold text-marron mb-2">Descargar Reportes PDF</p>
-          <select 
+          <select
             className="w-full bg-white border border-marron/20 text-marron-claro font-medium text-sm rounded-xl px-4 py-3 mb-3 outline-none focus:border-marron focus:ring-1 focus:ring-marron"
             value={repMes}
             onChange={(e) => setRepMes(e.target.value)}
@@ -357,7 +357,7 @@ function App() {
           >
             🗓️ Set Ene
           </button>
-          
+
           <button
             onClick={crearFebrero}
             className="
@@ -369,7 +369,7 @@ function App() {
           >
             🗓️ Set Feb
           </button>
-          
+
           <button
             onClick={eliminarDatos}
             className="
