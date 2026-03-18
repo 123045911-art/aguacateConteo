@@ -256,9 +256,8 @@ def generar_reporte(mes: int = Query(None), anio: int = Query(None)):
     elements.append(Spacer(1, 12))
 
     # Table
-    data = [["#", "Peso (g)", "Fecha y Hora"]]
+    data = [["ID", "Peso (g)", "Fecha y Hora"]]
     for i, r in enumerate(registros, start=1):
-        # r is a dict from Supabase: {"id": 1, "peso": 0.25, "fecha": "2026-03-16T12:00..."}
         dt = datetime.fromisoformat(r["fecha"].replace("Z", "+00:00"))
         data.append([
             str(i),

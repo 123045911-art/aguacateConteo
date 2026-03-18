@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Analytics } from "@vercel/analytics/react";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://aguacateconteo.onrender.com";
 
@@ -388,6 +389,7 @@ function App() {
       <footer className="text-xs text-marron/40 font-medium text-center pb-4">
         Rango válido: 70g – 300g
       </footer>
+      <Analytics />
     </div>
   )
 }
