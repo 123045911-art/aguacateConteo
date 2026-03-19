@@ -22,6 +22,7 @@ function App() {
 
   // Dashboard stats
   const [stats, setStats] = useState({ graph_data: [], top_three: [] })
+  const [dashboardPeriod, setDashboardPeriod] = useState('day') // day, month, year
 
   const fetchMedia = useCallback(async () => {
     try {
@@ -44,20 +45,20 @@ function App() {
     }
   }, [repMes])
 
-  const fetchDashboardStats = useCallback(async () => {
+  const fetchDashboardStats = useCallback(async (period = dashboardPeriod) => {
     try {
-      const res = await fetch(`${API_URL}/dashboard/stats`)
+      const res = await fetch(`${API_URL}/dashboard/stats?period=${period}`)
       const data = await res.json()
       setStats(data)
     } catch {
       console.error('Error al obtener stats del dashboard')
     }
-  }, [])
+  }, [dashboardPeriod])
 
   useEffect(() => {
     fetchMedia()
     if (view === 'dashboard') fetchDashboardStats()
-  }, [fetchMedia, fetchDashboardStats, view])
+  }, [fetchMedia, fetchDashboardStats, view, dashboardPeriod])
 
   const mostrarMensaje = (texto, tipo = 'ok') => {
     setMensaje(texto)
@@ -98,7 +99,7 @@ function App() {
       setPeso('')
       setAnimateAvg(true)
       setTimeout(() => setAnimateAvg(false), 600)
-      await fetchMedia()
+      await fetchMedia(); fetchDashboardStats();
     } catch (err) {
       mostrarMensaje(`❌ ${err.message}`, 'error')
     } finally {
@@ -125,7 +126,7 @@ function App() {
         throw new Error(err.detail?.[0]?.msg || err.detail || 'Error al registrar')
       }
       mostrarMensaje(`✅ Registrado Manual: ${gramos}g`, 'ok')
-      await fetchMedia()
+      await fetchMedia(); fetchDashboardStats();
     } catch (err) {
       mostrarMensaje(`❌ ${err.message}`, 'error')
     } finally {
@@ -183,7 +184,7 @@ function App() {
       mostrarMensaje(`🗑️ ${data.mensaje}`, 'ok')
       setAnimateAvg(true)
       setTimeout(() => setAnimateAvg(false), 600)
-      await fetchMedia()
+      await fetchMedia(); fetchDashboardStats();
     } catch (err) {
       mostrarMensaje(`❌ ${err.message}`, 'error')
     }
@@ -280,7 +281,11 @@ function App() {
         )}
 
         {view === 'dashboard' && (
-          <DashboardView stats={stats} />
+          <DashboardView 
+            stats={stats} 
+            period={dashboardPeriod} 
+            setPeriod={setDashboardPeriod} 
+          />
         )}
 
         {view === 'history' && (
@@ -436,25 +441,64 @@ function ManualEntryView({ onRegister, loading }) {
   )
 }
 
-function DashboardView({ stats }) {
+function DashboardView({ stats, period, setPeriod }) {
   if (!stats || !stats.graph_data || stats.graph_data.length === 0) {
     return (
-      <div className="bg-white rounded-3xl border border-crema-oscuro p-10 text-center space-y-4">
-        <TrendingUp size={48} className="mx-auto text-marron/20" />
-        <p className="text-sm font-black text-marron/40 uppercase">Aún no hay datos para mostrar</p>
+      <div className="space-y-6">
+        <div className="bg-white rounded-3xl border border-crema-oscuro p-4 flex gap-2 overflow-x-auto">
+          {['day', 'month', 'year'].map(p => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${period === p ? 'bg-verde-oscuro text-white shadow-md' : 'bg-crema text-marron/50 hover:bg-crema-oscuro'}`}
+            >
+              {p === 'day' ? 'Día' : p === 'month' ? 'Mes' : 'Año'}
+            </button>
+          ))}
+        </div>
+        <div className="bg-white rounded-3xl border border-crema-oscuro p-10 text-center space-y-4 shadow-sm">
+          <TrendingUp size={48} className="mx-auto text-marron/20" />
+          <p className="text-sm font-black text-marron/40 uppercase">Aún no hay datos para mostrar</p>
+        </div>
       </div>
     )
+  }
+
+  const formatXAxis = (val, index) => {
+    if (period === 'year') return val;
+    if (period === 'month') {
+      // stats.graph_data entries already have a 'label' from backend like "Marzo 2024"
+      const item = stats.graph_data.find(d => d.fecha === val);
+      return item ? item.label.split(' ')[0].substring(0, 3) : val;
+    }
+    // day
+    return val.split('-').slice(1).reverse().join('/');
   }
 
   return (
     <div className="animate-[fadeIn_0.3s_ease-out] space-y-6">
       
+      {/* Period Selector */}
+      <div className="bg-white rounded-3xl border border-crema-oscuro p-2 flex gap-2 shadow-sm">
+        {['day', 'month', 'year'].map(p => (
+          <button
+            key={p}
+            onClick={() => setPeriod(p)}
+            className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${period === p ? 'bg-verde-oscuro text-white shadow-md' : 'text-marron/50 hover:bg-crema/50'}`}
+          >
+            {p === 'day' ? 'Por Día' : p === 'month' ? 'Por Mes' : 'Por Año'}
+          </button>
+        ))}
+      </div>
+
       <div className="bg-white rounded-3xl border border-crema-oscuro shadow-xl p-6 overflow-hidden">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-black text-verde-oscuro uppercase tracking-tight flex items-center gap-2">
-            <TrendingUp size={20} /> Tendencia de Medias
+            <TrendingUp size={20} /> {period === 'day' ? 'Tendencia Diaria' : period === 'month' ? 'Tendencia Mensual' : 'Tendencia Anual'}
           </h2>
-          <span className="text-[10px] font-bold text-marron/40 bg-crema px-2 py-1 rounded-full">30 Días</span>
+          <span className="text-[10px] font-bold text-marron/40 bg-crema px-2 py-1 rounded-full capitalize">
+            {period === 'day' ? 'Últimos 30 días' : period === 'month' ? 'Últimos 12 meses' : 'Histórico Anual'}
+          </span>
         </div>
         
         <div className="h-64 w-full">
@@ -463,11 +507,11 @@ function DashboardView({ stats }) {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
               <XAxis 
                 dataKey="fecha" 
-                fontSize={10} 
+                fontSize={ period === 'year' ? 12 : 10} 
                 tickMargin={10} 
                 axisLine={false} 
                 tickLine={false}
-                tickFormatter={(val) => val.split('-').slice(1).reverse().join('/')}
+                tickFormatter={formatXAxis}
               />
               <YAxis 
                 fontSize={10} 
@@ -479,6 +523,10 @@ function DashboardView({ stats }) {
               <Tooltip 
                 contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
                 labelStyle={{ fontWeight: 'bold', color: '#2d5a27' }}
+                labelFormatter={(value) => {
+                  const item = stats.graph_data.find(d => d.fecha === value);
+                  return item ? item.label : value;
+                }}
               />
               <Line 
                 type="monotone" 
@@ -487,6 +535,7 @@ function DashboardView({ stats }) {
                 strokeWidth={4} 
                 dot={{ r: 4, fill: '#2d5a27', strokeWidth: 2, stroke: '#fff' }}
                 activeDot={{ r: 6, strokeWidth: 0 }}
+                animationDuration={1000}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -495,16 +544,16 @@ function DashboardView({ stats }) {
 
       <div className="bg-white rounded-3xl border border-crema-oscuro shadow-xl p-6">
         <h2 className="text-sm font-black text-verde-oscuro uppercase tracking-widest mb-4 flex items-center gap-2">
-          🥇 Top 3 Medias Registradas
+          🥇 Top 3 Medias {period === 'day' ? 'Diarias' : period === 'month' ? 'Mensuales' : 'Anuales'}
         </h2>
         <div className="space-y-3">
           {stats.top_three.map((item, index) => (
             <div key={item.fecha} className="flex items-center gap-4 p-4 rounded-2xl bg-crema/30 border border-crema-oscuro">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-white ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-amber-600'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-white shadow-sm ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-amber-600'}`}>
                 {index + 1}
               </div>
               <div className="flex-1">
-                <p className="text-xs font-black text-marron uppercase">{new Date(item.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
+                <p className="text-xs font-black text-marron uppercase">{item.label}</p>
                 <p className="text-[10px] text-marron/50 font-bold uppercase">{item.total} registros</p>
               </div>
               <div className="text-right">

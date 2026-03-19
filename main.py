@@ -356,38 +356,63 @@ def generar_reporte(mes: int = Query(None), anio: int = Query(None)):
 
 
 @app.get("/dashboard/stats")
-def obtener_stats_dashboard():
+def obtener_stats_dashboard(period: str = Query("day")):
     require_db()
-    # Fetch all records to calculate stats (for production, this might be limited to recent months)
+    # Fetch all records to calculate stats
     response = supabase.table("pesajes").select("*").order("fecha").execute()
     registros = response.data
 
     if not registros:
         return {"graph_data": [], "top_three": []}
 
-    # Group by date for daily averages
-    stats_por_fecha = {}
+    # Group by period for averages
+    stats_agrupados = {}
     for r in registros:
         dt = datetime.fromisoformat(r["fecha"].replace("Z", "+00:00"))
-        fecha_str = dt.strftime("%Y-%m-%d")
-        if fecha_str not in stats_por_fecha:
-            stats_por_fecha[fecha_str] = {"suma": 0, "total": 0}
-        stats_por_fecha[fecha_str]["suma"] += r["peso"]
-        stats_por_fecha[fecha_str]["total"] += 1
+        
+        if period == "year":
+            key = dt.strftime("%Y")
+            label = f"{key}"
+        elif period == "month":
+            key = dt.strftime("%Y-%m")
+            # Using the MESES list from line 33
+            nombre_mes = MESES[dt.month - 1]
+            label = f"{nombre_mes} {dt.year}"
+        else: # default is day
+            key = dt.strftime("%Y-%m-%d")
+            label = key
+
+        if key not in stats_agrupados:
+            stats_agrupados[key] = {"suma": 0, "total": 0, "label": label}
+        
+        stats_agrupados[key]["suma"] += r["peso"]
+        stats_agrupados[key]["total"] += 1
 
     graph_data = []
-    for fecha, stats in stats_por_fecha.items():
+    # Sort keys to ensure chronological order
+    for key in sorted(stats_agrupados.keys()):
+        stats = stats_agrupados[key]
         media = stats["suma"] / stats["total"]
         graph_data.append({
-            "fecha": fecha,
+            "fecha": key,
+            "label": stats["label"],
             "media": round(media * 1000, 1), # In grams
             "total": stats["total"]
         })
 
-    # Top 3 daily averages
+    # Top 3 based on media
     top_three = sorted(graph_data, key=lambda x: x["media"], reverse=True)[:3]
 
-    # Limit graph data to last 30 distinct dates
-    graph_data = graph_data[-30:]
+    # Limit graph data based on period
+    if period == "day":
+        graph_data = graph_data[-30:] # Last 30 days
+    elif period == "month":
+        graph_data = graph_data[-12:] # Last 12 months
+    elif period == "year":
+        graph_data = graph_data[-5:] # Last 5 years
 
-    return {"graph_data": graph_data, "top_three": top_three}
+    return {
+        "graph_data": graph_data, 
+        "top_three": top_three, 
+        "period": period
+    }
