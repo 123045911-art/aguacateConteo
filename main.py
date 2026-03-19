@@ -89,6 +89,11 @@ def require_db():
     if not supabase:
         raise HTTPException(status_code=500, detail="La base de datos (Supabase) no está configurada. Verifica el archivo .env")
 
+# Health Check for Render
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 
 # Endpoints
 @app.post("/pesaje", response_model=PesajeResponse)
@@ -164,43 +169,6 @@ def listar_meses():
     return meses_list
 
 
-@app.post("/seed-febrero")
-def seed_febrero():
-    require_db()
-    ahora = datetime.now()
-    records_to_insert = []
-    for dia in range(1, 29):
-        for _ in range(random.randint(1, 3)):
-            peso = round(random.uniform(0.080, 0.280), 3)
-            hora = random.randint(7, 17)
-            minuto = random.randint(0, 59)
-            # format ISO string for Postgres
-            fecha_str = f"{ahora.year}-02-{dia:02d}T{hora:02d}:{minuto:02d}:00Z"
-            records_to_insert.append({"peso": peso, "fecha": fecha_str})
-            
-    if records_to_insert:
-        supabase.table("pesajes").insert(records_to_insert).execute()
-        
-    return {"mensaje": f"Se crearon {len(records_to_insert)} registros de prueba para Febrero {ahora.year}."}
-
-
-@app.post("/seed-enero")
-def seed_enero():
-    require_db()
-    ahora = datetime.now()
-    records_to_insert = []
-    for dia in range(1, 32):
-        for _ in range(random.randint(1, 4)):
-            peso = round(random.uniform(0.080, 0.280), 3)
-            hora = random.randint(7, 17)
-            minuto = random.randint(0, 59)
-            fecha_str = f"{ahora.year}-01-{dia:02d}T{hora:02d}:{minuto:02d}:00Z"
-            records_to_insert.append({"peso": peso, "fecha": fecha_str})
-            
-    if records_to_insert:
-        supabase.table("pesajes").insert(records_to_insert).execute()
-        
-    return {"mensaje": f"Se crearon {len(records_to_insert)} registros de prueba para Enero {ahora.year}."}
 
 
 @app.delete("/reset")
