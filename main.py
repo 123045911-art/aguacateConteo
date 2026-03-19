@@ -49,6 +49,20 @@ class PesajeCreate(BaseModel):
         return round(v, 3)
 
 
+class PesajeManualCreate(BaseModel):
+    peso: float
+    fecha: datetime
+
+    @field_validator("peso")
+    @classmethod
+    def peso_valido(cls, v: float) -> float:
+        if v < 0.070:
+            raise ValueError("El peso no puede ser menor a 70 gramos.")
+        if v > 0.300:
+            raise ValueError("El peso no puede ser mayor a 300 gramos.")
+        return round(v, 3)
+
+
 class PesajeResponse(BaseModel):
     id: int
     peso: float
@@ -81,6 +95,17 @@ def require_db():
 def registrar_pesaje(data: PesajeCreate):
     require_db()
     response = supabase.table("pesajes").insert({"peso": data.peso}).execute()
+    if not response.data:
+        raise HTTPException(status_code=500, detail="Error al insertar en Supabase")
+    return response.data[0]
+
+
+@app.post("/pesaje/manual", response_model=PesajeResponse)
+def registrar_pesaje_manual(data: PesajeManualCreate):
+    require_db()
+    # format date for Postgres
+    fecha_str = data.fecha.strftime("%Y-%m-%dT%H:%M:%SZ")
+    response = supabase.table("pesajes").insert({"peso": data.peso, "fecha": fecha_str}).execute()
     if not response.data:
         raise HTTPException(status_code=500, detail="Error al insertar en Supabase")
     return response.data[0]
@@ -321,7 +346,6 @@ def generar_reporte(mes: int = Query(None), anio: int = Query(None)):
     doc.build(elements)
     buffer.seek(0)
 
-    nombre_mes_archivo = MESES[mes_reporte - 1].lower()
     return StreamingResponse(
         buffer,
         media_type="application/pdf",
@@ -329,3 +353,41 @@ def generar_reporte(mes: int = Query(None), anio: int = Query(None)):
             "Content-Disposition": f"attachment; filename=reporte_{nombre_mes_archivo}_{anio_reporte}.pdf"
         },
     )
+
+
+@app.get("/dashboard/stats")
+def obtener_stats_dashboard():
+    require_db()
+    # Fetch all records to calculate stats (for production, this might be limited to recent months)
+    response = supabase.table("pesajes").select("*").order("fecha").execute()
+    registros = response.data
+
+    if not registros:
+        return {"graph_data": [], "top_three": []}
+
+    # Group by date for daily averages
+    stats_por_fecha = {}
+    for r in registros:
+        dt = datetime.fromisoformat(r["fecha"].replace("Z", "+00:00"))
+        fecha_str = dt.strftime("%Y-%m-%d")
+        if fecha_str not in stats_por_fecha:
+            stats_por_fecha[fecha_str] = {"suma": 0, "total": 0}
+        stats_por_fecha[fecha_str]["suma"] += r["peso"]
+        stats_por_fecha[fecha_str]["total"] += 1
+
+    graph_data = []
+    for fecha, stats in stats_por_fecha.items():
+        media = stats["suma"] / stats["total"]
+        graph_data.append({
+            "fecha": fecha,
+            "media": round(media * 1000, 1), # In grams
+            "total": stats["total"]
+        })
+
+    # Top 3 daily averages
+    top_three = sorted(graph_data, key=lambda x: x["media"], reverse=True)[:3]
+
+    # Limit graph data to last 30 distinct dates
+    graph_data = graph_data[-30:]
+
+    return {"graph_data": graph_data, "top_three": top_three}
