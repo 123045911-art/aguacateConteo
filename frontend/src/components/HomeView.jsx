@@ -1,4 +1,4 @@
-export default function HomeView({ peso, media, suma, total, loading, animateAvg, onRegistrator, onAddDigit, onDelete, onClear }) {
+export default function HomeView({ peso, media, suma, total, loading, animateAvg, onRegistrator, onAddDigit, onDelete, onClear, fila, setFila, arbol, setArbol }) {
   const teclas = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫']
   const sumaGramos = Math.round(suma * 1000)
   const mostrarEnKg = sumaGramos >= 1000
@@ -46,6 +46,41 @@ export default function HomeView({ peso, media, suma, total, loading, animateAvg
             </button>
           )
         ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <label className="block text-[10px] font-black text-marron/40 uppercase tracking-widest mb-1 ml-1">Fila</label>
+          <select 
+            value={fila} 
+            onChange={(e) => {
+              setFila(e.target.value);
+              setArbol('');
+            }}
+            className="w-full bg-white border-2 border-crema-oscuro rounded-xl px-3 py-3 text-sm font-bold text-verde-oscuro outline-none appearance-none"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'org.w3/19/M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
+          >
+            <option value="">Seleccionar Fila</option>
+            <option value="A">Fila A</option>
+            <option value="B">Fila B</option>
+            <option value="C">Fila C</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-[10px] font-black text-marron/40 uppercase tracking-widest mb-1 ml-1">Árbol</label>
+          <select 
+            value={arbol} 
+            onChange={(e) => setArbol(e.target.value)}
+            disabled={!fila}
+            className={`w-full bg-white border-2 border-crema-oscuro rounded-xl px-3 py-3 text-sm font-bold text-verde-oscuro outline-none appearance-none ${!fila ? 'opacity-50 grayscale' : ''}`}
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'org.w3/19/M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
+          >
+            <option value=""># Árbol</option>
+            {Array.from({ length: fila === 'A' ? 23 : (fila ? 24 : 0) }, (_, i) => (
+              <option key={i + 1} value={i + 1}>Árbol {i + 1}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <button

@@ -32,7 +32,9 @@ function App() {
   // Dashboard stats
   const [stats, setStats] = useState({ graph_data: [], top_five: [] });
   const [dashboardPeriod, setDashboardPeriod] = useState('month');
-
+  const [fila, setFila] = useState('');
+  const [arbol, setArbol] = useState('');
+  
   const fetchMedia = useCallback(async () => {
     try {
       let url = `${API_URL}/media`;
@@ -102,7 +104,11 @@ function App() {
           'Content-Type': 'application/json',
           'X-API-KEY': API_KEY
         },
-        body: JSON.stringify({ peso: valorKg }),
+        body: JSON.stringify({ 
+          peso: valorKg,
+          fila: fila || null,
+          arbol: arbol ? parseInt(arbol, 10) : null
+        }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -110,6 +116,8 @@ function App() {
       }
       mostrarMensaje(`✅ Registrado: ${gramos}g`, 'ok');
       setPeso('');
+      setFila('');
+      setArbol('');
       setAnimateAvg(true);
       setTimeout(() => setAnimateAvg(false), 600);
       await fetchMedia(); fetchDashboardStats();
@@ -135,13 +143,20 @@ function App() {
           'Content-Type': 'application/json',
           'X-API-KEY': API_KEY
         },
-        body: JSON.stringify({ peso: valorKg, fecha: manualFecha }),
+        body: JSON.stringify({ 
+          peso: valorKg, 
+          fecha: manualFecha,
+          fila: fila || null,
+          arbol: arbol ? parseInt(arbol, 10) : null
+        }),
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.detail?.[0]?.msg || err.detail || 'Error al registrar');
       }
       mostrarMensaje(`✅ Registrado Manual: ${gramos}g`, 'ok');
+      setFila('');
+      setArbol('');
       await fetchMedia(); fetchDashboardStats();
     } catch (err) {
       mostrarMensaje(`❌ ${err.message}`, 'error');
@@ -239,6 +254,10 @@ function App() {
             onAddDigit={agregarDigito}
             onDelete={borrar}
             onClear={limpiar}
+            fila={fila}
+            setFila={setFila}
+            arbol={arbol}
+            setArbol={setArbol}
           />
         )}
 
@@ -246,6 +265,10 @@ function App() {
           <ManualEntryView 
             onRegister={registrarManual}
             loading={loading}
+            fila={fila}
+            setFila={setFila}
+            arbol={arbol}
+            setArbol={setArbol}
           />
         )}
 

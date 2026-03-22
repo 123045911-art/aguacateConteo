@@ -57,7 +57,11 @@ def healthCheck():
 @app.post("/pesaje", response_model=PesajeResponse)
 def registrarPesaje(data: PesajeCreate, apiKey: str = Depends(getApiKey)):
     requireDb()
-    response = supabase.table("pesajes").insert({"peso": data.peso}).execute()
+    response = supabase.table("pesajes").insert({
+        "peso": data.peso,
+        "fila": data.fila,
+        "arbol": data.arbol
+    }).execute()
     if not response.data:
         raise HTTPException(status_code=500, detail="Error al insertar en Supabase")
     return response.data[0]
@@ -66,7 +70,12 @@ def registrarPesaje(data: PesajeCreate, apiKey: str = Depends(getApiKey)):
 def registrarPesajeManual(data: PesajeManualCreate, apiKey: str = Depends(getApiKey)):
     requireDb()
     fechaStr = data.fecha.strftime("%Y-%m-%dT%H:%M:%SZ")
-    response = supabase.table("pesajes").insert({"peso": data.peso, "fecha": fechaStr}).execute()
+    response = supabase.table("pesajes").insert({
+        "peso": data.peso, 
+        "fecha": fechaStr,
+        "fila": data.fila,
+        "arbol": data.arbol
+    }).execute()
     if not response.data:
         raise HTTPException(status_code=500, detail="Error al insertar en Supabase")
     return response.data[0]

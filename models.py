@@ -3,6 +3,8 @@ from datetime import datetime
 
 class PesajeCreate(BaseModel):
     peso: float
+    fila: str | None = None
+    arbol: int | None = None
 
     @field_validator("peso")
     @classmethod
@@ -16,6 +18,8 @@ class PesajeCreate(BaseModel):
 class PesajeManualCreate(BaseModel):
     peso: float
     fecha: datetime
+    fila: str | None = None
+    arbol: int | None = None
 
     @field_validator("peso")
     @classmethod
@@ -30,3 +34,5 @@ class PesajeResponse(BaseModel):
     id: int
     peso: float
     fecha: datetime
+    fila: str | None = None
+    arbol: int | None = None

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PlusCircle, Calendar } from 'lucide-react';
 
-export default function ManualEntryView({ onRegister, loading }) {
+export default function ManualEntryView({ onRegister, loading, fila, setFila, arbol, setArbol }) {
   const [peso, setPeso] = useState('')
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
 
@@ -38,6 +38,41 @@ export default function ManualEntryView({ onRegister, loading }) {
               min="70"
               max="300"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-black text-marron/60 uppercase tracking-widest mb-2">Hilera (Fila)</label>
+              <select 
+                value={fila} 
+                onChange={(e) => {
+                  setFila(e.target.value);
+                  setArbol('');
+                }}
+                className="w-full bg-crema/30 border-2 border-crema-oscuro rounded-2xl px-4 py-3.5 text-sm font-bold text-verde-oscuro outline-none transition-colors appearance-none"
+                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
+              >
+                <option value="">Seleccionar Fila</option>
+                <option value="A">Fila A</option>
+                <option value="B">Fila B</option>
+                <option value="C">Fila C</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-marron/60 uppercase tracking-widest mb-2"># Árbol</label>
+              <select 
+                value={arbol} 
+                onChange={(e) => setArbol(e.target.value)}
+                disabled={!fila}
+                className={`w-full bg-crema/30 border-2 border-crema-oscuro rounded-2xl px-4 py-3.5 text-sm font-bold text-verde-oscuro outline-none transition-colors appearance-none ${!fila ? 'opacity-50 grayscale' : ''}`}
+                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
+              >
+                <option value="">Seleccionar Árbol</option>
+                {Array.from({ length: fila === 'A' ? 23 : (fila ? 24 : 0) }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>Árbol {i + 1}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
