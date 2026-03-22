@@ -2,33 +2,45 @@ import os
 from datetime import datetime
 from io import BytesIO
 import random
-
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 from dotenv import load_dotenv
-
 from supabase import create_client, Client
-
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
+from fastapi import Security, Depends
+from fastapi.security.api_key import APIKeyHeader
 
 # Load environment variables
 load_dotenv(override=True)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "aguacate123") # Valor por defecto si no hay .env
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000").split(",")
+# Nota: Si necesitas wildcards en Vercel, deberías usar allow_origin_regex o listar los dominios exactos.
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     print("WARNING: SUPABASE_URL and SUPABASE_KEY must be set in the .env file")
 
 # Initialize Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
+
+api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
+
+def get_api_key(api_header: str = Security(api_key_header)):
+    if api_header == ADMIN_API_KEY:
+        return api_header
+    raise HTTPException(
+        status_code=403,
+        detail="No autorizado: API Key inválida o faltante"
+    )
 
 MESES = [
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -73,7 +85,7 @@ app = FastAPI(title="Sistema de Pesaje de Aguacates (Supabase)")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -97,7 +109,7 @@ def health_check():
 
 # Endpoints
 @app.post("/pesaje", response_model=PesajeResponse)
-def registrar_pesaje(data: PesajeCreate):
+def registrar_pesaje(data: PesajeCreate, api_key: str = Depends(get_api_key)):
     require_db()
     response = supabase.table("pesajes").insert({"peso": data.peso}).execute()
     if not response.data:
@@ -106,7 +118,7 @@ def registrar_pesaje(data: PesajeCreate):
 
 
 @app.post("/pesaje/manual", response_model=PesajeResponse)
-def registrar_pesaje_manual(data: PesajeManualCreate):
+def registrar_pesaje_manual(data: PesajeManualCreate, api_key: str = Depends(get_api_key)):
     require_db()
     # format date for Postgres
     fecha_str = data.fecha.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -172,7 +184,7 @@ def listar_meses():
 
 
 @app.delete("/reset")
-def eliminar_datos():
+def eliminar_datos(api_key: str = Depends(get_api_key)):
     require_db()
     # Supabase .delete() requires a condition. We use neq(id, 0) to delete everything since id starts at 1
     response = supabase.table("pesajes").delete().neq("id", 0).execute()
@@ -186,6 +198,7 @@ def generar_reporte(mes: int = Query(None), anio: int = Query(None)):
     ahora = datetime.now()
     mes_reporte = mes if mes else ahora.month
     anio_reporte = anio if anio else ahora.year
+    nombre_mes_archivo = MESES[mes_reporte - 1].lower()
 
     inicio_str = f"{anio_reporte}-{mes_reporte:02d}-01T00:00:00Z"
     if mes_reporte == 12:
@@ -324,63 +337,37 @@ def generar_reporte(mes: int = Query(None), anio: int = Query(None)):
 
 
 @app.get("/dashboard/stats")
-def obtener_stats_dashboard(period: str = Query("day")):
+def obtener_stats_dashboard(period: str = Query("month")):
     require_db()
-    # Fetch all records to calculate stats
-    response = supabase.table("pesajes").select("*").order("fecha").execute()
-    registros = response.data
+    
+    # Validar periodo
+    if period not in ["month", "year"]:
+        period = "month"
 
-    if not registros:
-        return {"graph_data": [], "top_three": []}
+    # Llamamos a la función RPC de Supabase para obtener estadísticas pre-calculadas
+    response = supabase.rpc("get_dashboard_stats", {"p_period": period}).execute()
+    
+    if not response.data:
+        return {"graph_data": [], "top_five": [], "period": period}
 
-    # Group by period for averages
-    stats_agrupados = {}
-    for r in registros:
-        dt = datetime.fromisoformat(r["fecha"].replace("Z", "+00:00"))
-        
-        if period == "year":
-            key = dt.strftime("%Y")
-            label = f"{key}"
-        elif period == "month":
-            key = dt.strftime("%Y-%m")
-            # Using the MESES list from line 33
-            nombre_mes = MESES[dt.month - 1]
-            label = f"{nombre_mes} {dt.year}"
-        else: # default is day
-            key = dt.strftime("%Y-%m-%d")
-            label = key
+    graph_data = response.data
+    
+    # Ordenar y formatear etiquetas si es necesario (ya viene casi listo de SQL)
+    for item in graph_data:
+        item["media"] = round(item["media"], 1)
+        # El label ya viene formateado desde SQL
 
-        if key not in stats_agrupados:
-            stats_agrupados[key] = {"suma": 0, "total": 0, "label": label}
-        
-        stats_agrupados[key]["suma"] += r["peso"]
-        stats_agrupados[key]["total"] += 1
+    # Top 5 basado en media
+    top_five = sorted(graph_data, key=lambda x: x["media"], reverse=True)[:5]
 
-    graph_data = []
-    # Sort keys to ensure chronological order
-    for key in sorted(stats_agrupados.keys()):
-        stats = stats_agrupados[key]
-        media = stats["suma"] / stats["total"]
-        graph_data.append({
-            "fecha": key,
-            "label": stats["label"],
-            "media": round(media * 1000, 1), # In grams
-            "total": stats["total"]
-        })
-
-    # Top 3 based on media
-    top_three = sorted(graph_data, key=lambda x: x["media"], reverse=True)[:3]
-
-    # Limit graph data based on period
-    if period == "day":
-        graph_data = graph_data[-30:] # Last 30 days
-    elif period == "month":
-        graph_data = graph_data[-12:] # Last 12 months
+    # Limitar datos del gráfico según el periodo
+    if period == "month":
+        graph_data = graph_data[-12:] # Últimos 12 meses
     elif period == "year":
-        graph_data = graph_data[-5:] # Last 5 years
+        graph_data = graph_data[-5:] # Últimos 5 años
 
     return {
         "graph_data": graph_data, 
-        "top_three": top_three, 
+        "top_five": top_five, 
         "period": period
     }

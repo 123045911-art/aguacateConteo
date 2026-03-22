@@ -4,6 +4,7 @@ import { Menu, X, PlusCircle, LayoutDashboard, Calculator, History, TrendingUp, 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const API_URL = import.meta.env.VITE_API_URL || "https://aguacateconteo.onrender.com";
+const API_KEY = import.meta.env.VITE_API_KEY || "aguacate123";
 
 function App() {
   const [view, setView] = useState('home') // home, manual, dashboard, history
@@ -21,8 +22,8 @@ function App() {
   const [repMes, setRepMes] = useState('')
 
   // Dashboard stats
-  const [stats, setStats] = useState({ graph_data: [], top_three: [] })
-  const [dashboardPeriod, setDashboardPeriod] = useState('day') // day, month, year
+  const [stats, setStats] = useState({ graph_data: [], top_five: [] })
+  const [dashboardPeriod, setDashboardPeriod] = useState('month') // month, year
 
   const fetchMedia = useCallback(async () => {
     try {
@@ -88,7 +89,10 @@ function App() {
     try {
       const res = await fetch(`${API_URL}/pesaje`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-API-KEY': API_KEY
+        },
         body: JSON.stringify({ peso: valorKg }),
       })
       if (!res.ok) {
@@ -118,7 +122,10 @@ function App() {
     try {
       const res = await fetch(`${API_URL}/pesaje/manual`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-API-KEY': API_KEY
+        },
         body: JSON.stringify({ peso: valorKg, fecha: manualFecha }),
       })
       if (!res.ok) {
@@ -179,7 +186,10 @@ function App() {
   const eliminarDatos = async () => {
     if (!window.confirm('⚠️ ¿Estás seguro de que quieres ELIMINAR todos los registros? Esta acción no se puede deshacer.')) return
     try {
-      const res = await fetch(`${API_URL}/reset`, { method: 'DELETE' })
+      const res = await fetch(`${API_URL}/reset`, { 
+        method: 'DELETE',
+        headers: { 'X-API-KEY': API_KEY }
+      })
       const data = await res.json()
       mostrarMensaje(`🗑️ ${data.mensaje}`, 'ok')
       setAnimateAvg(true)
@@ -446,13 +456,13 @@ function DashboardView({ stats, period, setPeriod }) {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-3xl border border-crema-oscuro p-4 flex gap-2 overflow-x-auto">
-          {['day', 'month', 'year'].map(p => (
+          {['month', 'year'].map(p => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${period === p ? 'bg-verde-oscuro text-white shadow-md' : 'bg-crema text-marron/50 hover:bg-crema-oscuro'}`}
             >
-              {p === 'day' ? 'Día' : p === 'month' ? 'Mes' : 'Año'}
+              {p === 'month' ? 'Mes' : 'Año'}
             </button>
           ))}
         </div>
@@ -467,12 +477,10 @@ function DashboardView({ stats, period, setPeriod }) {
   const formatXAxis = (val, index) => {
     if (period === 'year') return val;
     if (period === 'month') {
-      // stats.graph_data entries already have a 'label' from backend like "Marzo 2024"
       const item = stats.graph_data.find(d => d.fecha === val);
       return item ? item.label.split(' ')[0].substring(0, 3) : val;
     }
-    // day
-    return val.split('-').slice(1).reverse().join('/');
+    return val;
   }
 
   return (
@@ -480,13 +488,13 @@ function DashboardView({ stats, period, setPeriod }) {
       
       {/* Period Selector */}
       <div className="bg-white rounded-3xl border border-crema-oscuro p-2 flex gap-2 shadow-sm">
-        {['day', 'month', 'year'].map(p => (
+        {['month', 'year'].map(p => (
           <button
             key={p}
             onClick={() => setPeriod(p)}
             className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${period === p ? 'bg-verde-oscuro text-white shadow-md' : 'text-marron/50 hover:bg-crema/50'}`}
           >
-            {p === 'day' ? 'Por Día' : p === 'month' ? 'Por Mes' : 'Por Año'}
+            {p === 'month' ? 'Por Mes' : 'Por Año'}
           </button>
         ))}
       </div>
@@ -494,10 +502,10 @@ function DashboardView({ stats, period, setPeriod }) {
       <div className="bg-white rounded-3xl border border-crema-oscuro shadow-xl p-6 overflow-hidden">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-black text-verde-oscuro uppercase tracking-tight flex items-center gap-2">
-            <TrendingUp size={20} /> {period === 'day' ? 'Tendencia Diaria' : period === 'month' ? 'Tendencia Mensual' : 'Tendencia Anual'}
+            <TrendingUp size={20} /> {period === 'month' ? 'Tendencia Mensual' : 'Tendencia Anual'}
           </h2>
           <span className="text-[10px] font-bold text-marron/40 bg-crema px-2 py-1 rounded-full capitalize">
-            {period === 'day' ? 'Últimos 30 días' : period === 'month' ? 'Últimos 12 meses' : 'Histórico Anual'}
+            {period === 'month' ? 'Últimos 12 meses' : 'Histórico Anual'}
           </span>
         </div>
         
@@ -544,12 +552,12 @@ function DashboardView({ stats, period, setPeriod }) {
 
       <div className="bg-white rounded-3xl border border-crema-oscuro shadow-xl p-6">
         <h2 className="text-sm font-black text-verde-oscuro uppercase tracking-widest mb-4 flex items-center gap-2">
-          🥇 Top 3 Medias {period === 'day' ? 'Diarias' : period === 'month' ? 'Mensuales' : 'Anuales'}
+          🥇 Top 5 Medias {period === 'month' ? 'Mensuales' : 'Anuales'}
         </h2>
         <div className="space-y-3">
-          {stats.top_three.map((item, index) => (
-            <div key={item.fecha} className="flex items-center gap-4 p-4 rounded-2xl bg-crema/30 border border-crema-oscuro">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-white shadow-sm ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-amber-600'}`}>
+          {stats.top_five.map((item, index) => (
+            <div key={item.fecha} className="flex items-center gap-4 p-4 rounded-2xl bg-crema/30 border border-crema-oscuro transition-all hover:bg-crema">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-white shadow-sm filter drop-shadow-sm ${index === 0 ? 'bg-gradient-to-br from-yellow-300 to-yellow-500' : index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400' : index === 2 ? 'bg-gradient-to-br from-amber-500 to-amber-700' : 'bg-verde-medio/80'}`}>
                 {index + 1}
               </div>
               <div className="flex-1">
